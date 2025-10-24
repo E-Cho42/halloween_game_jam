@@ -290,6 +290,8 @@ class player():
                 self.attack_timer = self.attack_cooldown
                 
     def update_attacks(self, dt, boss):
+        if boss is None or not hasattr(boss, "alive") or not boss.alive:
+            return
         if self.attack_timer > 0:
             self.attack_timer -= dt
 
@@ -358,7 +360,7 @@ class player():
             self.display_health = self.current_health
             self.hit_flash_alpha = 255
             for _ in range(10):
-                self.hit_particles.append(HitParticle((self.pos[0] + 64, self.pos[1] + 64)))
+                self.hit_particles.append(HitParticle((self.pos[0] + 50, self.pos[1] + 50)))
 
             if self.current_health <= 0:
                 self.current_health = 0

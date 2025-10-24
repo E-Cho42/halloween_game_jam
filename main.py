@@ -5,6 +5,7 @@ from pumking import Pumpking
 import ui
 import math
 from bride import SpecterBride
+from ScarecrowLordStub import ScarecrowLord
 
 pg.init()
 clock = pg.time.Clock()
@@ -30,7 +31,6 @@ player_right_masked = pg.transform.scale(pg.image.load("Art/player_masked.png"),
 
 # === MASK IMAGES (scaled for menu) ===
 _mask_size = (80, 80)
-_mask_spacing = 24
 
 mask_images = {
     "Pumpking": pg.image.load("Art/mask_pumpking.png").convert_alpha(),
@@ -50,29 +50,6 @@ boss = None
 shake_timer = 0
 shake_intensity = 0
 
-# === FOG SYSTEM ===
-class FogParticle:
-    def __init__(self):
-        self.x = random.randint(0, WIDTH)
-        self.y = random.randint(0, HEIGHT)
-        self.radius = random.randint(80, 160)
-        self.speed = random.uniform(5, 20)
-        self.alpha = random.randint(30, 80)
-        self.surface = pg.Surface((self.radius * 2, self.radius * 2), pg.SRCALPHA)
-        pg.draw.circle(self.surface, (200, 200, 200, self.alpha), (self.radius, self.radius), self.radius)
-
-    def update(self, dt):
-        self.x += math.sin(pg.time.get_ticks() * 0.0002) * self.speed * dt
-        self.y += math.cos(pg.time.get_ticks() * 0.0002) * self.speed * dt
-        if self.x < -self.radius: self.x = WIDTH + self.radius
-        if self.x > WIDTH + self.radius: self.x = -self.radius
-        if self.y < -self.radius: self.y = HEIGHT + self.radius
-        if self.y > HEIGHT + self.radius: self.y = -self.radius
-
-    def draw(self, surface):
-        surface.blit(self.surface, (self.x - self.radius, self.y - self.radius))
-
-fog_particles = [FogParticle() for _ in range(15)]
 
 # -------------------------------------------------------------------
 # === BOSS FACTORIES & STUBS ===
@@ -90,35 +67,12 @@ def create_specter_bride():
     return b, background
 
 def create_scarecrow_lord():
-    b = ScarecrowLordStub((400, 300))
-    bg = pg.transform.scale(pg.image.load("Art/background2.png"), (WIDTH, HEIGHT))
+    b = ScarecrowLord((400, 300))
+    bg = pg.transform.scale(pg.image.load("Art/background3.png"), (WIDTH, HEIGHT))
     return b, bg
 
 
 
-class ScarecrowLordStub:
-    def __init__(self, pos=(400, 300)):
-        self.name = "Scarecrow Lord"
-        self.pos = pg.Vector2(pos)
-        self.max_health = 150
-        self.health = self.max_health
-        self.alive = True
-        self.projectiles = []
-        self.just_attacked = False
-        
-        # Add rect attribute for collision detection
-        self.rect = pg.Rect(0, 0, 64, 96)
-        self.rect.center = self.pos
-
-    def update(self, dt, player):
-        # Update rect position
-        self.rect.center = self.pos
-
-    def draw(self, surface):
-        rect = pg.Rect(0, 0, 64, 96)
-        surf = pg.Surface(rect.size, pg.SRCALPHA)
-        pg.draw.rect(surf, (160, 120, 40), rect)
-        surface.blit(surf, (self.pos.x - rect.width//2, self.pos.y - rect.height//2))
 
 BOSS_FACTORIES = {
     "Pumpking": create_pumpking,
@@ -126,146 +80,7 @@ BOSS_FACTORIES = {
     "Scarecrow Lord": create_scarecrow_lord
 }
 
-# -------------------------------------------------------------------
-# === UI: Screens ===
-# -------------------------------------------------------------------
 
-def draw_start_screen(canvas, dt):
-    canvas.fill((5, 5, 5))
-    for fog in fog_particles:
-        fog.update(dt)
-        fog.draw(canvas)
-
-    darken = pg.Surface((WIDTH, HEIGHT), pg.SRCALPHA)
-    darken.fill((0, 0, 0, 150))
-    canvas.blit(darken, (0, 0))
-
-    font_title = pg.font.Font(None, 120)
-    font_subtitle = pg.font.Font(None, 60)
-    font_info = pg.font.Font(None, 40)
-    font_controls = pg.font.Font(None, 36)
-
-    title_text = font_title.render("MASKQUERADE", True, (230, 210, 150))
-    subtitle_text = font_subtitle.render("— The Boss Rush —", True, (160, 140, 90))
-    canvas.blit(title_text, title_text.get_rect(center=(WIDTH // 2, 200)))
-    canvas.blit(subtitle_text, subtitle_text.get_rect(center=(WIDTH // 2, 270)))
-
-    flicker = (pg.time.get_ticks() // 300) % 2
-    if flicker:
-        start_text = font_info.render("Press ENTER to Begin", True, (240, 220, 150))
-    else:
-        start_text = font_info.render("Press ENTER to Begin", True, (200, 200, 200))
-    canvas.blit(start_text, start_text.get_rect(center=(WIDTH // 2, 430)))
-
-    quit_text = font_info.render("Press ESC to Quit", True, (120, 120, 120))
-    canvas.blit(quit_text, quit_text.get_rect(center=(WIDTH // 2, 480)))
-
-    pg.display.flip()
-
-def draw_boss_select_screen(canvas, dt, selected_index, boss_names, defeated_bosses, mask_images):
-    canvas.fill((10, 10, 10))
-    for fog in fog_particles:
-        fog.update(dt)
-        fog.draw(canvas)
-    darken = pg.Surface((WIDTH, HEIGHT), pg.SRCALPHA)
-    darken.fill((0, 0, 0, 160))
-    canvas.blit(darken, (0, 0))
-
-    font_title = pg.font.Font(None, 100)
-    font_option = pg.font.Font(None, 60)
-    font_info = pg.font.Font(None, 40)
-    font_masks = pg.font.Font(None, 50)
-
-    title_text = font_title.render("Choose Your Foe", True, (230, 210, 150))
-    canvas.blit(title_text, title_text.get_rect(center=(WIDTH // 2, 120)))
-
-    y = 260
-    for i, name in enumerate(boss_names):
-        if name in defeated_bosses:
-            color = (120, 120, 120)
-        elif i == selected_index:
-            color = (240, 200, 120)
-        else:
-            color = (180, 180, 180)
-
-        text = font_option.render(name, True, color)
-        rect = text.get_rect(center=(WIDTH // 2, y))
-        canvas.blit(text, rect)
-
-        if name in defeated_bosses:
-            pg.draw.line(canvas, (200, 50, 50),
-                         (rect.left - 10, rect.centery),
-                         (rect.right + 10, rect.centery), 5)
-        y += 80
-
-    # Mask section
-    mask_title = font_masks.render("Your Masks", True, (220, 210, 160))
-    canvas.blit(mask_title, mask_title.get_rect(center=(WIDTH // 2, 520)))
-
-    mask_w, mask_h = _mask_size
-    total_width = len(boss_names) * mask_w + (len(boss_names) - 1) * _mask_spacing
-    start_x = (WIDTH - total_width) // 2
-    y_mask = 580
-
-    for name in boss_names:
-        mask = mask_images[name]
-        pos = (start_x, y_mask)
-        if name in defeated_bosses:
-            canvas.blit(mask, pos)
-        else:
-            faded = mask.copy()
-            faded.fill((80, 80, 80, 180), None, pg.BLEND_RGBA_MULT)
-            canvas.blit(faded, pos)
-            lock_font = pg.font.Font(None, 22)
-            lock = lock_font.render("🔒", True, (200, 80, 80))
-            canvas.blit(lock, (start_x + mask_w//2 - lock.get_width()//2, y_mask + mask_h//2 - lock.get_height()//2))
-        start_x += mask_w + _mask_spacing
-
-    info_text = font_info.render("w / s to Select  |  ENTER to Begin  |  ESC to Back", True, (200, 200, 200))
-    canvas.blit(info_text, info_text.get_rect(center=(WIDTH // 2, 740)))
-
-    pg.display.flip()
-
-def draw_boss_cleared_screen(canvas, boss_name, dt):
-    canvas.fill((5, 5, 5))
-    for fog in fog_particles:
-        fog.update(dt)
-        fog.draw(canvas)
-
-    darken = pg.Surface((WIDTH, HEIGHT), pg.SRCALPHA)
-    darken.fill((0, 0, 0, 180))
-    canvas.blit(darken, (0, 0))
-
-    font_title = pg.font.Font(None, 120)
-    font_boss = pg.font.Font(None, 80)
-    font_info = pg.font.Font(None, 40)
-
-    # Flickering "BOSS CLEARED" text
-    flicker = (pg.time.get_ticks() // 200) % 2
-    if flicker:
-        title_text = font_title.render("BOSS CLEARED", True, (255, 215, 0))
-    else:
-        title_text = font_title.render("BOSS CLEARED", True, (200, 170, 50))
-    
-    canvas.blit(title_text, title_text.get_rect(center=(WIDTH // 2, 250)))
-
-    # Boss name
-    boss_text = font_boss.render(boss_name, True, (220, 180, 80))
-    canvas.blit(boss_text, boss_text.get_rect(center=(WIDTH // 2, 350)))
-
-    # Victory message
-    victory_text = font_info.render("Victory Achieved", True, (180, 180, 180))
-    canvas.blit(victory_text, victory_text.get_rect(center=(WIDTH // 2, 420)))
-
-    # Continue prompt
-    continue_flicker = (pg.time.get_ticks() // 500) % 2
-    if continue_flicker:
-        continue_text = font_info.render("Press ENTER to continue", True, (200, 200, 100))
-    else:
-        continue_text = font_info.render("Press ENTER to continue", True, (150, 150, 100))
-    canvas.blit(continue_text, continue_text.get_rect(center=(WIDTH // 2, 500)))
-
-    pg.display.flip()
 
 # === RESTART ===
 def restart_game(player, boss):
@@ -282,14 +97,18 @@ def restart_game(player, boss):
     player.invuln_timer = 0
     player.healing = False
     player.dashing = False
-    boss.health = boss.max_health
-    if hasattr(boss, "reset"):
-        boss.reset()
-    else:
-        boss.health = boss.max_health
-        boss.alive = True
-        if hasattr(boss, "projectiles"):
-            boss.projectiles.clear()
+    # Safe reset for boss
+    if boss is not None:
+        if hasattr(boss, "max_health"):
+            boss.health = boss.max_health
+        if hasattr(boss, "reset"):
+            boss.reset()
+        else:
+            boss.alive = True
+            if hasattr(boss, "projectiles"):
+                boss.projectiles.clear()
+            if hasattr(boss, "minions"):
+                boss.minions.clear()
 
 # === GAME VARIABLES ===
 boss_names = ["Pumpking", "Specter Bride", "Scarecrow Lord"]
@@ -304,16 +123,29 @@ while not exit:
     dt = clock.tick(60) / 1000
 
     if GAME_STATE == "start":
-        draw_start_screen(canvas, dt)
+        ui.draw_start_screen(canvas, dt)
         for event in pg.event.get():
             if event.type == pg.QUIT: exit = True
             elif event.type == pg.KEYDOWN:
-                if event.key == pg.K_RETURN: GAME_STATE = "boss_select"
-                elif event.key == pg.K_ESCAPE: exit = True
+                if event.key == pg.K_RETURN:
+                    GAME_STATE = "intro"
+                elif event.key == pg.K_ESCAPE:
+                    exit = True
+        continue
+    
+    if GAME_STATE == "intro":
+        ui.draw_intro_screen(canvas, dt)
+        for event in pg.event.get():
+            if event.type == pg.QUIT: exit = True
+            elif event.type == pg.KEYDOWN:
+                if event.key == pg.K_RETURN:
+                    GAME_STATE = "boss_select"
+                elif event.key == pg.K_ESCAPE:
+                    GAME_STATE = "start"
         continue
 
     if GAME_STATE == "boss_select":
-        draw_boss_select_screen(canvas, dt, selected_boss, boss_names, defeated_bosses, mask_images)
+        ui.draw_boss_select_screen(canvas, dt, selected_boss, boss_names, defeated_bosses, mask_images)
         for event in pg.event.get():
             if event.type == pg.QUIT: exit = True
             elif event.type == pg.KEYDOWN:
@@ -358,9 +190,60 @@ while not exit:
 
     player.update_dash(dt)
     player.player_move()
+
+    # boss_projectiles: safe fallback if boss doesn't have projectiles
     boss_projectiles = boss.projectiles if boss and hasattr(boss, "projectiles") else []
     player.update(dt, boss_projectiles)
-    player.update_attacks(dt, boss)
+
+    # Player attack logic (player.update_attacks may expect boss or None) -- guard the call
+    if boss:
+        player.update_attacks(dt, boss)
+    else:
+        player.update_attacks(dt, None)
+
+    # --- NEW: handle collisions between player's projectiles and boss / minions ---
+    # We'll do this here so minions (boss.minions) are hittable by player.projectiles
+    if boss:
+        # iterate a copy because we may remove projectiles mid-loop
+        for proj in list(player.projectiles):
+            # skip projectiles if they don't have rect/alive
+            if not hasattr(proj, "rect"):
+                continue
+
+            # hit minions first (if the boss type has minions)
+            if hasattr(boss, "minions"):
+                for m in list(boss.minions):
+                    if not getattr(m, "alive", True):
+                        continue
+                    if m.rect.colliderect(proj.rect):
+                        # damage the minion
+                        dmg = getattr(proj, "damage", 1)
+                        if hasattr(m, "health"):
+                            m.health -= dmg
+                        else:
+                            m.alive = False
+                        # destroy the projectile (if it has alive flag)
+                        if hasattr(proj, "alive"):
+                            proj.alive = False
+                        # break so a single projectile doesn't hit multiple minions
+                        break
+
+            # hit the boss itself (if still alive)
+            if getattr(boss, "alive", False) and hasattr(boss, "rect") and boss.rect.colliderect(proj.rect):
+                dmg = getattr(proj, "damage", 1)
+                # call take_damage if available, otherwise decrement health
+                if hasattr(boss, "take_damage"):
+                    boss.take_damage(dmg)
+                else:
+                    if hasattr(boss, "health"):
+                        boss.health -= dmg
+                if hasattr(proj, "alive"):
+                    proj.alive = False
+
+    # Clean up dead projectiles from player's list
+    # Keep projectiles that either don't have 'alive' or are still alive
+    player.projectiles[:] = [proj for proj in player.projectiles if not hasattr(proj, "alive") or proj.alive]
+
     player.update_footsteps(dt)
     player.update_heal(dt)
 
@@ -381,13 +264,17 @@ while not exit:
             unlocked_masks.add("pumpkin")
         elif boss_name == "Specter Bride":
             unlocked_masks.add("specter")
+        elif boss_name == "Scarecrow Lord":
+            # if you want to unlock the scarecrow mask, add here
+            unlocked_masks.add("scarecrow")
+            can_use_mask = True
         boss = None
         background = default_background
         GAME_STATE = "boss_cleared"  # Change to boss cleared screen
         continue
 
     if GAME_STATE == "boss_cleared":
-        draw_boss_cleared_screen(canvas, current_boss_name, dt)
+        ui.draw_boss_cleared_screen(canvas, current_boss_name, dt)
         for event in pg.event.get():
             if event.type == pg.QUIT: exit = True
             elif event.type == pg.KEYDOWN:

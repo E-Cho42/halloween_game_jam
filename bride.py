@@ -20,7 +20,7 @@ class SpecterBride:
 
         # === Load image ===
         self.image = pg.image.load("Art/Specter_Bride.png").convert_alpha()
-        self.image = pg.transform.scale(self.image, (160, 160))
+        self.image = pg.transform.scale(self.image, (200, 200))
         self.rect = self.image.get_rect(center=self.pos)
 
         # === Movement + attack timers ===

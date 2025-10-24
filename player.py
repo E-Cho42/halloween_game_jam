@@ -4,7 +4,7 @@ from projectile import Projectile
 import random 
 
 class player():
-    def __init__(self, pos, masked, direction, image_left, image_right, speed, masked_left, masked_right ):
+    def __init__(self, pos, masked, direction, image_left, image_right, speed, masked_left, masked_right):
         self.pos = pos
         self.masked = masked
         # True = right, False = left
@@ -14,6 +14,12 @@ class player():
         self.speed = speed
         self.masked_left = masked_left
         self.masked_right = masked_right
+        
+        # Add specter mask images
+        self.specter_left = pg.transform.scale(pg.image.load("Art/player_masked_fliped2.png"), (128, 128))
+        self.specter_right = pg.transform.scale(pg.image.load("Art/player_masked2.png"), (128, 128))
+        
+        self.current_mask = None  # Track which mask is equipped
         
         self.dead = False
         self.death_timer = 0
@@ -46,13 +52,15 @@ class player():
         self.heal_timer = 0
         self.heal_duration = 1.0  # seconds of healing animation
 
-        # ✅ Added collision rect for boss projectile detection
+        
         self.rect = self.image_right.get_rect(topleft=self.pos)
 
         # --- Hit effect ---
         self.hit_flash_alpha = 0
         self.hit_particles = []
 
+        # Four-directional attack variables
+        self.attack_direction = "right"  # default direction
     
     def player_move(self):
         if self.dead:
@@ -64,15 +72,19 @@ class player():
         if keys[pg.K_a]:
             self.direction = False
             move_x -= 1
+            self.attack_direction = "left"
         if keys[pg.K_d]:
             self.direction = True
             move_x += 1
+            self.attack_direction = "right"
         if keys[pg.K_w]:
             move_y -= 1
+            self.attack_direction = "up"
         if keys[pg.K_s]:
             move_y += 1
+            self.attack_direction = "down"
 
-        # ✅ Keep player inside arena
+        # Keep player inside arena
         arena_rect = pg.Rect(0, 0, 800, 800)
         self.rect.clamp_ip(arena_rect)
         self.pos[0], self.pos[1] = self.rect.topleft
@@ -90,7 +102,7 @@ class player():
         self.pos[0] += move_x * current_speed
         self.pos[1] += move_y * current_speed
 
-        # ✅ Keep collision rect in sync with movement
+        # Keep collision rect in sync with movement
         self.rect.topleft = self.pos
         
         moving = any(pg.key.get_pressed()[k] for k in [pg.K_a, pg.K_d, pg.K_w, pg.K_s])
@@ -98,7 +110,7 @@ class player():
             self.foot_timer -= 1 / 60  # assuming roughly 60 fps
             if self.foot_timer <= 0:
                 self.foot_timer = self.foot_cooldown
-                # spawn a footstep particle at player’s feet
+                # spawn a footstep particle at player's feet
                 self.foot_particles.append(FootstepParticle([self.pos[0] + 64, self.pos[1] + 128]))
 
     def update_footsteps(self, dt):
@@ -111,11 +123,34 @@ class player():
         for f in self.foot_particles:
             f.draw(canvas)
         
-    def player_mask_check(self, event):
+    def player_mask_check(self, event, can_use_mask=False, unlocked_masks=None):
+        if unlocked_masks is None:
+            unlocked_masks = set()
+            
         if event.type == pg.KEYDOWN:
-            if event.key == pg.K_m:
-                self.masked = not self.masked
-    
+            # Key 1 for pumpkin mask
+            if event.key == pg.K_1 and "pumpkin" in unlocked_masks:
+                if self.current_mask == "pumpkin":
+                    self.masked = False
+                    self.current_mask = None
+                else:
+                    self.masked = True
+                    self.current_mask = "pumpkin"
+            
+            # Key 2 for specter mask  
+            elif event.key == pg.K_2 and "specter" in unlocked_masks:
+                if self.current_mask == "specter":
+                    self.masked = False
+                    self.current_mask = None
+                else:
+                    self.masked = True
+                    self.current_mask = "specter"
+            
+            # M key to toggle current mask off
+            elif event.key == pg.K_m and can_use_mask:
+                self.masked = False
+                self.current_mask = None
+        
     def player_dash(self, event):
         if self.dead:
             return
@@ -138,10 +173,16 @@ class player():
     def draw(self, canvas):
         # drawing player
         if self.masked:
-            if self.direction:
-                canvas.blit(self.masked_right, self.pos)
-            else:
-                canvas.blit(self.masked_left, self.pos)
+            if self.current_mask == "specter":
+                if self.direction:
+                    canvas.blit(self.specter_right, self.pos)
+                else:
+                    canvas.blit(self.specter_left, self.pos)
+            else:  # Default to pumpkin mask
+                if self.direction:
+                    canvas.blit(self.masked_right, self.pos)
+                else:
+                    canvas.blit(self.masked_left, self.pos)
         else:        
             if self.direction:
                 canvas.blit(self.image_right, self.pos)
@@ -151,7 +192,7 @@ class player():
         for proj in self.projectiles:
             proj.draw(canvas)
 
-        # ✅ draw hit effects
+        # draw hit effects
         self.draw_hit_effects(canvas)
 
     def draw_dash_indicator(self, canvas, dt):
@@ -203,14 +244,49 @@ class player():
                 pg.draw.rect(flash_surface, (255, 255, 255, self.flash_alpha), (0, 0, bar_width, bar_height))
                 canvas.blit(flash_surface, (bar_x, bar_y))
                 
-    def player_attack(self, event):
+    def player_attack(self, event, boss=None):
         if self.dead:
             return
         if event.type == pg.KEYDOWN and event.key == pg.K_f:
             if self.attack_timer <= 0:
-                attack_image = pg.image.load('Art/attack.png').convert_alpha()
-                proj_pos = (self.pos[0] + 64, self.pos[1] + 64)
-                self.projectiles.append(Projectile(proj_pos, self.direction, attack_image))
+                # Specter mask uses homing wisp attacks
+                if self.masked and self.current_mask == "specter":
+                    wisp_image = pg.image.load('Art/whisp.png').convert_alpha()
+                    
+                    # Calculate projectile position based on attack direction
+                    if self.attack_direction == "right":
+                        proj_pos = (self.pos[0] + 64, self.pos[1] + 64)
+                    elif self.attack_direction == "left":
+                        proj_pos = (self.pos[0] - 32, self.pos[1] + 64)
+                    elif self.attack_direction == "up":
+                        proj_pos = (self.pos[0] + 64, self.pos[1] - 32)
+                    elif self.attack_direction == "down":
+                        proj_pos = (self.pos[0] + 64, self.pos[1] + 128)
+                    
+                    # Create homing wisp projectile with boss reference
+                    self.projectiles.append(HomingWispProjectile(proj_pos, wisp_image, boss))
+                    
+                # Pumpkin mask uses normal attacks
+                elif self.masked:
+                    attack_image = pg.image.load('Art/attack.png').convert_alpha()
+                    
+                    # Calculate projectile position based on attack direction
+                    if self.attack_direction == "right":
+                        proj_pos = (self.pos[0] + 64, self.pos[1] + 64)
+                    elif self.attack_direction == "left":
+                        proj_pos = (self.pos[0] - 32, self.pos[1] + 64)
+                    elif self.attack_direction == "up":
+                        proj_pos = (self.pos[0] + 64, self.pos[1] - 32)
+                    elif self.attack_direction == "down":
+                        proj_pos = (self.pos[0] + 64, self.pos[1] + 128)
+                    
+                    self.projectiles.append(Projectile(proj_pos, self.attack_direction, attack_image))
+                else:
+                    # Original left/right only attack when not masked
+                    attack_image = pg.image.load('Art/attack.png').convert_alpha()
+                    proj_pos = (self.pos[0] + 64, self.pos[1] + 64)
+                    self.projectiles.append(Projectile(proj_pos, self.direction, attack_image))
+                        
                 self.attack_timer = self.attack_cooldown
                 
     def update_attacks(self, dt, boss):
@@ -218,7 +294,11 @@ class player():
             self.attack_timer -= dt
 
         for proj in self.projectiles:
-            proj.update(dt)
+            # Pass boss to homing projectiles for targeting
+            if hasattr(proj, 'update_with_boss'):
+                proj.update_with_boss(dt, boss)
+            else:
+                proj.update(dt)
 
         self.projectiles = [p for p in self.projectiles if p.alive]
         for proj in self.projectiles:
@@ -305,8 +385,8 @@ class player():
     def draw_hit_effects(self, canvas):
         if self.hit_flash_alpha > 0:
             flash = pg.Surface((128, 128), pg.SRCALPHA)
-            flash.fill((255, 255, 255, int(self.hit_flash_alpha)))
-            #canvas.blit(flash, (self.pos[0], self.pos[1]))
+            #flash.fill((255, 255, 255, int(self.hit_flash_alpha)))
+            canvas.blit(flash, (self.pos[0], self.pos[1]))
 
         for p in self.hit_particles:
             p.draw(canvas)
@@ -362,7 +442,7 @@ class HitParticle:
         self.lifetime = 0.4
         self.age = 0
 
-        # random circular velocity
+        # random angle and speed for circular spread
         angle = random.uniform(0, 2 * math.pi)
         speed = random.uniform(80, 160)
         self.vel = pg.Vector2(math.cos(angle) * speed, math.sin(angle) * speed)
@@ -372,17 +452,63 @@ class HitParticle:
 
     def update(self, dt):
         self.age += dt
-        # slow down (air resistance)
+        # slow down gradually (air resistance)
         self.vel *= 0.9
         self.pos += self.vel * dt
 
     def draw(self, surface):
         if self.age < self.lifetime:
-            fade = max(0, 255 * (1 - self.age / self.lifetime))
-            color = (
-                min(255, self.color[0]),
-                max(0, self.color[1]),
-                max(0, self.color[2]),
-            )
-            # Just draw the fading circle directly (no alpha surfaces)
-            pg.draw.circle(surface, color, (int(self.pos.x), int(self.pos.y)), self.radius)
+            pg.draw.circle(surface, self.color, (int(self.pos.x), int(self.pos.y)), self.radius)
+
+class HomingWispProjectile:
+    def __init__(self, pos, image, boss, speed=120):
+        self.pos = pg.Vector2(pos)
+        self.image = pg.transform.scale(image, (32, 32))
+        self.rect = self.image.get_rect(center=pos)
+        self.alive = True
+        self.speed = speed
+        self.boss = boss
+        self.velocity = pg.Vector2(0, 0)
+        self.homing_strength = 0.1  # How strongly it homes in on target
+
+    def update_with_boss(self, dt, boss):
+        if not self.alive:
+            return
+            
+        # Update boss reference
+        self.boss = boss
+        
+        if self.boss and hasattr(self.boss, 'pos') and self.boss.alive:
+            # Calculate direction to boss
+            direction = pg.Vector2(self.boss.pos) - self.pos
+            if direction.length() > 0:
+                direction = direction.normalize()
+                
+                # Gradually adjust velocity towards boss
+                self.velocity = self.velocity.lerp(direction * self.speed, self.homing_strength)
+        else:
+            # If no boss, continue in current direction
+            if self.velocity.length() == 0:
+                self.velocity = pg.Vector2(1, 0) * self.speed  # Default direction
+
+        # Move projectile
+        self.pos += self.velocity * dt
+        self.rect.center = self.pos
+
+        # Kill projectile if off-screen
+        if not pg.Rect(0, 0, 800, 800).collidepoint(self.pos):
+            self.alive = False
+
+    def update(self, dt):
+        # Fallback update if no boss is provided
+        if self.velocity.length() == 0:
+            self.velocity = pg.Vector2(1, 0) * self.speed
+            
+        self.pos += self.velocity * dt
+        self.rect.center = self.pos
+
+        if not pg.Rect(0, 0, 800, 800).collidepoint(self.pos):
+            self.alive = False
+
+    def draw(self, canvas):
+        canvas.blit(self.image, self.rect)

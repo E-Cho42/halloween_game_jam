@@ -9,7 +9,7 @@ class Pumpking:
         self.image = pg.transform.scale(pg.image.load("Art/boss1.png"), (256, 256))
         self.rect = self.image.get_rect(center=pos)
         self.pos = pg.Vector2(pos)
-        self.max_health = 800
+        self.max_health = 100
         self.health = self.max_health
         self.speed = 80  # movement speed
         self.direction = pg.Vector2(random.choice([-1, 1]), random.choice([-1, 1]))
@@ -115,23 +115,29 @@ class Pumpking:
         # --- Boss sprite ---
         canvas.blit(self.image, self.rect)
 
-        # --- Debug: Draw boss collision rect ---
-        
-
-        # --- Projectiles with debug ---
+        # --- Projectiles ---
         for proj in self.projectiles:
             proj.draw(canvas)
-            # Debug: Draw projectile collision rect
-            
 
         # --- Health bar ---
-        bar_width = 400
+        bar_width = 600
         bar_height = 20
-        x, y = 200, 50
+        x, y = 100, 750
+
+        # Background (empty bar)
         pg.draw.rect(canvas, (50, 0, 0), (x, y, bar_width, bar_height))
+        # Health amount (filled part)
         pg.draw.rect(canvas, (255, 80, 80),
                     (x, y, bar_width * (self.health / self.max_health), bar_height))
+        # Outline
         pg.draw.rect(canvas, (0, 0, 0), (x, y, bar_width, bar_height), 2)
+
+        # --- Boss name text ---
+        font = pg.font.Font(None, 48)  # You can replace None with a font file if you want a custom one
+        text = font.render("Pump-King", True, (255, 200, 0))  # orange-yellow color
+        text_rect = text.get_rect(center=(x + bar_width // 2, y - 25))
+        canvas.blit(text, text_rect)
+
     def take_damage(self, amount):
         if self.alive:
             self.health -= amount

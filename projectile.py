@@ -38,9 +38,18 @@ class Projectile:
         self.particles = []
         self.speed = speed
 
-        # ✅ Support both bool (player) and Vector2 (boss)
-        if isinstance(direction, bool):
-            # Player projectile — left or right
+        # ✅ Support for four directions (player) and Vector2 (boss)
+        if isinstance(direction, str):  # Player projectile - four directions
+            if direction == "right":
+                self.velocity = pg.Vector2(1, 0)
+            elif direction == "left":
+                self.velocity = pg.Vector2(-1, 0)
+            elif direction == "up":
+                self.velocity = pg.Vector2(0, -1)
+            elif direction == "down":
+                self.velocity = pg.Vector2(0, 1)
+        elif isinstance(direction, bool):
+            # Player projectile — left or right (backward compatibility)
             self.velocity = pg.Vector2(1 if direction else -1, 0)
         else:
             # Boss projectile — arbitrary direction vector

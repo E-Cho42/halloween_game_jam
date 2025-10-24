@@ -338,7 +338,7 @@ while not exit:
     # === PLAYING ===
     if boss and getattr(boss, "just_attacked", False):
         shake_timer = 0.4
-        shake_intensity = 10
+        shake_intensity = 2
         boss.just_attacked = False
 
     if shake_timer > 0:

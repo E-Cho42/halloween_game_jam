@@ -8,11 +8,15 @@ class SpecterBride:
         # === Basic stats ===
         self.name = "Specter Bride"
         self.pos = pg.Vector2(pos)
-        self.max_health = 120
+        self.max_health = 1200
         self.health = self.max_health
         self.alive = True
         self.projectiles = []
         self.just_attacked = False
+        
+        # === Screen boundaries ===
+        self.screen_width = 800
+        self.screen_height = 800
 
         # === Load image ===
         self.image = pg.image.load("Art/Specter_Bride.png").convert_alpha()
@@ -21,15 +25,15 @@ class SpecterBride:
 
         # === Movement + attack timers ===
         self.float_timer = 0
-        self.attack_cooldown = 0.75
+        self.attack_cooldown = 0.5
         self.attack_timer = random.uniform(0.25, 0.25)
 
         # === Dash variables ===
         self.dashing = False
-        self.dash_cooldown = random.uniform(3.0, 6.0)
+        self.dash_cooldown = random.uniform(1.5, 3)
         self.dash_timer = self.dash_cooldown
         self.dash_speed = 700
-        self.dash_duration = 0.2
+        self.dash_duration = 0.4
         self.dash_time_left = 0
 
         # === Fade-in effect ===
@@ -50,6 +54,10 @@ class SpecterBride:
         self.float_timer += dt
         self.pos.x += math.sin(pg.time.get_ticks() * 0.001) * 40 * dt
         self.pos.y += math.cos(pg.time.get_ticks() * 0.0015) * 20 * dt
+        
+        # === Keep within screen boundaries ===
+        self.keep_in_bounds()
+        
         self.rect.center = self.pos
 
         # === Attack logic ===
@@ -67,6 +75,22 @@ class SpecterBride:
             if not proj.alive:
                 self.projectiles.remove(proj)
 
+    def keep_in_bounds(self):
+        """Keep the Specter Bride within the 800x800 screen boundaries"""
+        margin = 80  # Keep boss away from edges (half of image width/height)
+        
+        # X boundary check
+        if self.pos.x < margin:
+            self.pos.x = margin
+        elif self.pos.x > self.screen_width - margin:
+            self.pos.x = self.screen_width - margin
+            
+        # Y boundary check  
+        if self.pos.y < margin:
+            self.pos.y = margin
+        elif self.pos.y > self.screen_height - margin:
+            self.pos.y = self.screen_height - margin
+
     def handle_dash(self, dt, player):
         self.dash_timer -= dt
         if not self.dashing and self.dash_timer <= 0:
@@ -81,18 +105,22 @@ class SpecterBride:
 
         if self.dashing:
             self.pos += self.vel * dt
+            
+            # Keep within bounds during dash
+            self.keep_in_bounds()
+            
             self.rect.center = self.pos
             self.dash_time_left -= dt
             if self.dash_time_left <= 0:
                 self.dashing = False
                 self.vel = pg.Vector2(0, 0)
                 self.alpha = 255
-                self.dash_timer = random.uniform(3.0, 6.0)
+                self.dash_timer = random.uniform(1.5, 3.0)
 
     def attack(self, player):
         """Launch a slow homing wisp toward the player."""
         direction = (pg.Vector2(player.pos) - self.pos).normalize()
-        self.projectiles.append(WispProjectile(self.pos, direction))
+        self.projectiles.append(WispProjectile(self.pos, direction, self.screen_width, self.screen_height))
         self.just_attacked = True
 
     def draw(self, canvas):
@@ -158,12 +186,16 @@ class WispProjectile:
     # --- Load once, globally ---
     wisp_image = None
 
-    def __init__(self, pos, direction):
+    def __init__(self, pos, direction, screen_width=800, screen_height=800):
         self.pos = pg.Vector2(pos)
         self.vel = direction * 150
         self.alive = True
         self.lifetime = 3.0
         self.radius = 12
+        
+        # Screen boundaries for projectiles
+        self.screen_width = screen_width
+        self.screen_height = screen_height
 
         # Load wisp image once
         if WispProjectile.wisp_image is None:
@@ -180,6 +212,13 @@ class WispProjectile:
 
     def update(self, dt):
         self.pos += self.vel * dt
+        
+        # Keep projectiles in bounds (optional - remove if you want them to leave screen)
+        margin = 24  # Half of projectile size
+        if self.pos.x < -margin or self.pos.x > self.screen_width + margin or \
+           self.pos.y < -margin or self.pos.y > self.screen_height + margin:
+            self.alive = False
+            
         self.lifetime -= dt
         self.rect.center = (int(self.pos.x), int(self.pos.y))
         if self.lifetime <= 0:

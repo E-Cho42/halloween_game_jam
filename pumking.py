@@ -9,7 +9,7 @@ class Pumpking:
         self.image = pg.transform.scale(pg.image.load("Art/boss1.png"), (256, 256))
         self.rect = self.image.get_rect(center=pos)
         self.pos = pg.Vector2(pos)
-        self.max_health = 100
+        self.max_health = 800
         self.health = self.max_health
         self.speed = 80  # movement speed
         self.direction = pg.Vector2(random.choice([-1, 1]), random.choice([-1, 1]))

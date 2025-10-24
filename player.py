@@ -251,6 +251,7 @@ class player():
             if self.attack_timer <= 0:
                 # Specter mask uses homing wisp attacks
                 if self.masked and self.current_mask == "specter":
+                    self.attack_cooldown = .75
                     wisp_image = pg.image.load('Art/whisp.png').convert_alpha()
                     
                     # Calculate projectile position based on attack direction

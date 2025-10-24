@@ -81,7 +81,7 @@ class Pumpking:
         for proj in list(self.projectiles):
             proj.update(dt)
 
-            # ✅ Damage check
+            # Damage check
             if hasattr(player, "rect") and proj.rect.colliderect(player.rect):
                 if hasattr(player, "take_damage") and not player.dead:
                     player.take_damage(20)
@@ -133,7 +133,7 @@ class Pumpking:
         pg.draw.rect(canvas, (0, 0, 0), (x, y, bar_width, bar_height), 2)
 
         # --- Boss name text ---
-        font = pg.font.Font(None, 48)  # You can replace None with a font file if you want a custom one
+        font = pg.font.Font(None, 48)
         text = font.render("Pump-King", True, (255, 200, 0))  # orange-yellow color
         text_rect = text.get_rect(center=(x + bar_width // 2, y - 25))
         canvas.blit(text, text_rect)

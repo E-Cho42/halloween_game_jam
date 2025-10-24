@@ -83,7 +83,7 @@ class ScarecrowLord:
         # Movement / dash
         self.velocity = pg.Vector2(0, 0)
         self.speed = 120
-        self.dash_speed = 600
+        self.dash_speed = 400
         self.dash_timer = 0
         self.dash_cooldown = random.uniform(1.5, 2.5)
         self.is_dashing = False

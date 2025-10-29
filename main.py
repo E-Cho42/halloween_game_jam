@@ -32,6 +32,7 @@ player_right_masked = pg.transform.scale(pg.image.load("Art/player_masked.png"),
 # === MASK IMAGES (scaled for menu) ===
 _mask_size = (80, 80)
 
+
 mask_images = {
     "Pumpking": pg.image.load("Art/mask_pumpking.png").convert_alpha(),
     "Specter Bride": pg.image.load("Art/mask_specter.png").convert_alpha(),
@@ -169,8 +170,14 @@ while not exit:
 
     # === PLAYING ===
     if boss and getattr(boss, "just_attacked", False):
-        shake_timer = 0.4
-        shake_intensity = 2
+        
+        if boss_names == "Specter Bride":
+            shake_intensity = 1
+            shake_timer = 0.1
+        else: 
+            shake_timer = 0.4
+            shake_intensity = 6
+        
         boss.just_attacked = False
 
     if shake_timer > 0:
